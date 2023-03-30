@@ -134,10 +134,10 @@ static inline std::string &ltrim(std::string &s) {
     return s;
 }
 
-void DoSingleThreaded(const vector<string> &_fileList, ESortType _sortType, const string &_outputName,
+void DoSingleThreaded(const vector<string> &_fileList, ESortType _sortType, string _outputName,
                       vector<string> (*sort)(vector<string>, ESortType));
 
-void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, const string &_outputName,
+void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, string _outputName,
                      vector<string> (*sort)(vector<string>, ESortType));
 
 vector<string> ReadFile(const string &_fileName);
@@ -153,7 +153,7 @@ void QuickSort(vector<string> &_listToSort, int left, int right, IStringComparer
 
 vector<string> QuickSort(vector<string> _listToSort, ESortType _sortType);
 
-void WriteAndPrintResults(const vector<string> &_masterStringList, const string &_outputName, int _clocksTaken);
+void WriteAndPrintResults(const vector<string> &_masterStringList, string _outputName, int _clocksTaken);
 
 vector<string> mergeTwoVector(vector<string> &o1, vector<string> &o2, IStringComparer *stringComparer);
 
@@ -196,7 +196,7 @@ int main() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // The Stuff
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void DoSingleThreaded(const vector<string> &_fileList, ESortType _sortType, const string &_outputName,
+void DoSingleThreaded(const vector<string> &_fileList, ESortType _sortType, string _outputName,
                       vector<string> (*sort)(vector<string>, ESortType)) {
     clock_t startTime = clock();
     vector<string> masterStringList;
@@ -209,10 +209,10 @@ void DoSingleThreaded(const vector<string> &_fileList, ESortType _sortType, cons
     }
     clock_t endTime = clock();
 
-    WriteAndPrintResults(masterStringList, "Single" + _outputName, endTime - startTime);
+    WriteAndPrintResults(masterStringList, _outputName, endTime - startTime);
 }
 
-void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, const string &_outputName,
+void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, string _outputName,
                      vector<string> (*sort)(vector<string>, ESortType)) {
 
     clock_t startTime = clock();
@@ -248,7 +248,8 @@ void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, const
     vector<string> outList = mergeVector(masterStringList, _sortType);
     clock_t endTime = clock();
     outList = QuickSort(outList, _sortType);
-    WriteAndPrintResults(outList, "Multi" + _outputName, endTime - startTime);
+    vector<string> &list = outList;
+    WriteAndPrintResults(list, _outputName, endTime - startTime);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
