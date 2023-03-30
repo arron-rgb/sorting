@@ -453,11 +453,10 @@ vector<string> mergeTwoVector(vector<string> &o1, vector<string> &o2, IStringCom
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Output
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void WriteAndPrintResults(const vector<string> &_masterStringList, const string &_outputName, int _clocksTaken) {
+void WriteAndPrintResults(const vector<string> &_masterStringList, string _outputName, int _clocksTaken) {
     cout << _outputName << "\t- Clocks Taken: " << _clocksTaken << endl;
-    std::__fs::filesystem::path cwd = std::__fs::filesystem::current_path() / "MyOutputFiles";
-    std::__fs::filesystem::create_directory(cwd);
-    ofstream fileOut(cwd.string() + "/" + _outputName + ".txt", ofstream::trunc);
+
+    ofstream fileOut(_outputName + ".txt", ofstream::trunc);
     for (const auto &i: _masterStringList) {
         fileOut << i << endl;
     }
