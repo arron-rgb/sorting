@@ -11,12 +11,12 @@
 //	* Functions, classes, and algorithms can be added and changed as needed.
 //	* DO NOT use std::sort().
 // Objectives
-//	* 20 points - Make the program produce a SingleAscending.txt file that matches CorrectOutput/SingleAscending.txt.
-//	* 10 points - Make the program produce a SingleDescending.txt file that matches CorrectOutput/SingleDescending.txt.
-//	* 10 points - Make the program produce a SingleLastLetter.txt file that matches CorrectOutput/SingleLastLetter.txt.
+//	* 20 points - Make the program produce a SingleAscending.txt file that matches CorrectOutput/SingleAscending.txt. ok
+//	* 10 points - Make the program produce a SingleDescending.txt file that matches CorrectOutput/SingleDescending.txt. ok
+//	* 10 points - Make the program produce a SingleLastLetter.txt file that matches CorrectOutput/SingleLastLetter.txt. ok
 //	* 20 points - Write a brief report on what you found, what you did, and what other changes to the code you'd recommend.
 //	* 10 points - Make the program produce three MultiXXX.txt files that match the equivalent files in CorrectOutput; it must be multi-threaded.
-//	* 20 points - Improve performance as much as possible on both single-threaded and multi-threaded versions; speed is more important than memory usage.
+//	* 20 points - Improve performance as much as possible on both single-threaded and multi-threaded versions; speed is more important than memory usage. ok
 //	* 10 points - Improve safety and stability; fix memory leaks and handle unexpected input and edge cases.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -105,15 +105,20 @@ static inline std::string &ltrim(std::string &s) {
     return s;
 }
 
-void DoSingleThreaded(vector<string> _fileList, ESortType _sortType, string _outputName);
+void DoSingleThreaded(vector<string> _fileList, ESortType _sortType, string _outputName,
+                      vector<string> (*sort)(vector<string>, ESortType));
 
 void DoMultiThreaded(vector<string> _fileList, ESortType _sortType, string _outputName);
 
 vector<string> ReadFile(string _fileName);
 
-void ThreadedReadFile(string _fileName, vector<string> _listOut);
+void ThreadedReadFile(string _fileName, vector<string> *_listOut);
 
 vector<string> BubbleSort(vector<string> _listToSort, ESortType _sortType);
+
+void QuickSort(vector<string> &_listToSort, int left, int right, IStringComparer *stringComparer);
+
+vector<string> QuickSort(vector<string> _listToSort, ESortType _sortType);
 
 void WriteAndPrintResults(const vector<string> &_masterStringList, string _outputName, int _clocksTaken);
 
@@ -131,9 +136,12 @@ int main() {
     }
 
     // Do the stuff
-//	DoSingleThreaded(fileList, ESortType::AlphabeticalAscending,	"SingleAscending");
-//	DoSingleThreaded(fileList, ESortType::AlphabeticalDescending,	"SingleDescending");
-//	DoSingleThreaded(fileList, ESortType::LastLetterAscending,		"SingleLastLetter");
+    DoSingleThreaded(fileList, ESortType::AlphabeticalAscending, "SingleAscending::BubbleSort", BubbleSort);
+    DoSingleThreaded(fileList, ESortType::AlphabeticalAscending, "SingleAscending::QuickSort", QuickSort);
+    DoSingleThreaded(fileList, ESortType::AlphabeticalDescending, "SingleDescending::BubbleSort", BubbleSort);
+    DoSingleThreaded(fileList, ESortType::AlphabeticalDescending, "SingleDescending::QuickSort", QuickSort);
+    DoSingleThreaded(fileList, ESortType::LastLetterAscending, "SingleLastLetter::BubbleSort", BubbleSort);
+    DoSingleThreaded(fileList, ESortType::LastLetterAscending, "SingleLastLetter::QuickSort", QuickSort);
 #if MULTITHREADED_ENABLED
     DoMultiThreaded(fileList, ESortType::AlphabeticalAscending, "MultiAscending");
 //	DoMultiThreaded(fileList, ESortType::AlphabeticalDescending,	"MultiDescending");
@@ -149,7 +157,8 @@ int main() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // The Stuff
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void DoSingleThreaded(vector<string> _fileList, ESortType _sortType, string _outputName) {
+void DoSingleThreaded(vector<string> _fileList, ESortType _sortType, string _outputName,
+                      vector<string> (*sort)(vector<string>, ESortType)) {
     clock_t startTime = clock();
     vector<string> masterStringList;
     for (unsigned int i = 0; i < _fileList.size(); ++i) {
@@ -157,8 +166,7 @@ void DoSingleThreaded(vector<string> _fileList, ESortType _sortType, string _out
         for (unsigned int j = 0; j < fileStringList.size(); ++j) {
             masterStringList.push_back(fileStringList[j]);
         }
-
-        masterStringList = BubbleSort(masterStringList, _sortType);
+        masterStringList = sort(masterStringList, _sortType);
     }
     clock_t endTime = clock();
 
@@ -171,10 +179,9 @@ void DoMultiThreaded(vector<string> _fileList, ESortType _sortType, string _outp
     vector<thread> workerThreads(_fileList.size());
     for (unsigned int i = 0; i < _fileList.size() - 1; ++i) {
         workerThreads[i] = thread(ThreadedReadFile, _fileList[i], masterStringList);
-        workerThreads[i].join();
+//        workerThreads[i].join();
+//        ThreadedReadFile(_fileList[i], masterStringList);
     }
-
-    workerThreads[workerThreads.size() - 1].join();
 
     masterStringList = BubbleSort(masterStringList, _sortType);
     clock_t endTime = clock();
@@ -255,48 +262,41 @@ bool LastLetterAscendingStringComparer::IsFirstAboveSecond(string _first, string
     return j - i;
 }
 
-void quickSort(vector<string> nums, unsigned int left, unsigned int right, IStringComparer *_sortType) {
-    if (_sortType == nullptr) {
-        return;
-    }
-    if (left >= right) return;
-
-    string pivot = nums[left];
-    unsigned int i = left + 1;
-    unsigned int j = right;
-
-    while (i <= j) {
-        while (i <= j && _sortType->IsFirstAboveSecond(nums[i], pivot)) i++;
-        while (i <= j && _sortType->IsFirstAboveSecond(pivot, nums[j])) j--;
-        if (i <= j) {
-            swap(nums[i], nums[j]);
-            i++;
-            j--;
-        }
-    }
-
-    swap(nums[left], nums[j]);
-
-    quickSort(nums, left, j - 1, _sortType);
-    quickSort(nums, j + 1, right, _sortType);
-}
-
-vector<string> quickSort(vector<string> _listToSort, ESortType _sortType) {
+vector<string> QuickSort(vector<string> arr, ESortType _sortType) {
     IStringComparer *stringSorter;
-    vector<string> sortedList = _listToSort;
     if (_sortType == ESortType::AlphabeticalAscending) {
         stringSorter = new AlphabeticalAscendingStringComparer();
     } else if (_sortType == ESortType::AlphabeticalDescending) {
         stringSorter = new AlphabeticalDescendingStringComparer();
     } else if (_sortType == ESortType::LastLetterAscending) {
         stringSorter = new LastLetterAscendingStringComparer();
-    } else {
-        // default
-        stringSorter = new AlphabeticalAscendingStringComparer();
     }
-
-    quickSort(sortedList, 0, sortedList.size() - 1, stringSorter);
+    vector<string> &sortedList = arr;
+    QuickSort(sortedList, 0, arr.size() - 1, stringSorter);
     return sortedList;
+}
+
+
+void QuickSort(vector<string> &arr, int left, int right, IStringComparer *_sortType) {
+    if (left >= right) {
+        return;
+    }
+    std::string pivot = arr[left];
+    int i = left;
+    int j = right;
+    while (i < j) {
+        while (i < j && arr[j] > pivot) {
+            j--;
+        }
+        arr[i] = arr[j];
+        while (i < j && arr[i] <= pivot) {
+            i++;
+        }
+        arr[j] = arr[i];
+    }
+    arr[i] = pivot;
+    QuickSort(arr, left, i - 1, _sortType);
+    QuickSort(arr, i + 1, right, _sortType);
 }
 
 
