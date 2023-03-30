@@ -6,7 +6,7 @@
 // Notes
 //	* This test requires a compiler with C++17 support and was built for Visual Studio 2017.
 // 		* Tested on Linux (Ubuntu 20.04) with: g++ -Wall -Wextra -pthread -std=c++17 MainTest.cpp
-//		* Tested on Mac OS Big Sur, 11.0.1 and latest XCode updates.
+//		* Tested on macOS Big Sur, 11.0.1 and latest XCode updates.
 //	* Correct output for all three sorts is in the CorrectOutput folder. BeyondCompare is recommended for comparing output.
 //	* Functions, classes, and algorithms can be added and changed as needed.
 //	* DO NOT use std::sort().
@@ -15,8 +15,8 @@
 //	* 10 points - Make the program produce a SingleDescending.txt file that matches CorrectOutput/SingleDescending.txt. ok
 //	* 10 points - Make the program produce a SingleLastLetter.txt file that matches CorrectOutput/SingleLastLetter.txt. ok
 //	* 20 points - Write a brief report on what you found, what you did, and what other changes to the code you'd recommend.
-//	* 10 points - Make the program produce three MultiXXX.txt files that match the equivalent files in CorrectOutput; it must be multi-threaded.
-//	* 20 points - Improve performance as much as possible on both single-threaded and multi-threaded versions; speed is more important than memory usage. ok
+//	* 10 points - Make the program produce three MultiXXX.txt files that match the equivalent files in CorrectOutput; it must be multithreading.
+//	* 20 points - Improve performance as much as possible on both single-threaded and multithreading versions; speed is more important than memory usage. ok
 //	* 10 points - Improve safety and stability; fix memory leaks and handle unexpected input and edge cases.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -27,7 +27,6 @@
 #include <ctime>
 #include <utility>
 #include <vector>
-#include <unistd.h>
 
 #ifndef INCLUDE_STD_FILESYSTEM_EXPERIMENTAL
 #   if defined(__cpp_lib_filesystem)
@@ -60,8 +59,8 @@
 namespace fs = std::experimental::filesystem;
 #   else
 
-#       include <filesystem>
-#include <sys/stat.h>
+# include <filesystem>
+# include <sys/stat.h>
 
 #		if __APPLE__
 namespace fs = std::__fs::filesystem;
@@ -81,6 +80,8 @@ using namespace std;
 enum class ESortType {
     AlphabeticalAscending, AlphabeticalDescending, LastLetterAscending
 };
+static const string AllSortTypesString = "ESortType::AlphabeticalAscending, ESortType::AlphabeticalDescending, ESortType::LastLetterAscending";
+
 
 class SortType {
 private:
@@ -133,10 +134,10 @@ static inline std::string &ltrim(std::string &s) {
     return s;
 }
 
-void DoSingleThreaded(const vector<string> &_fileList, ESortType _sortType, string _outputName,
+void DoSingleThreaded(const vector<string> &_fileList, ESortType _sortType, const string &_outputName,
                       vector<string> (*sort)(vector<string>, ESortType));
 
-void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, string _outputName,
+void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, const string &_outputName,
                      vector<string> (*sort)(vector<string>, ESortType));
 
 vector<string> ReadFile(const string &_fileName);
@@ -152,7 +153,7 @@ void QuickSort(vector<string> &_listToSort, int left, int right, IStringComparer
 
 vector<string> QuickSort(vector<string> _listToSort, ESortType _sortType);
 
-void WriteAndPrintResults(const vector<string> &_masterStringList, string _outputName, int _clocksTaken);
+void WriteAndPrintResults(const vector<string> &_masterStringList, const string &_outputName, int _clocksTaken);
 
 vector<string> mergeTwoVector(vector<string> &o1, vector<string> &o2, IStringComparer *stringComparer);
 
@@ -162,13 +163,15 @@ vector<string> mergeVector(vector<vector<string>> &lists, ESortType _sortType) {
     if (lists.empty()) {
         return {};
     }
-    IStringComparer *stringSorter = nullptr;
+    IStringComparer *stringSorter;
     if (_sortType == ESortType::AlphabeticalAscending) {
         stringSorter = new AlphabeticalAscendingStringComparer();
     } else if (_sortType == ESortType::AlphabeticalDescending) {
         stringSorter = new AlphabeticalDescendingStringComparer();
     } else if (_sortType == ESortType::LastLetterAscending) {
         stringSorter = new LastLetterAscendingStringComparer();
+    } else {
+        throw runtime_error("Sort Type must be one of the following types " + AllSortTypesString);
     }
     while (lists.size() > 1) {
         vector<string> l1 = lists[0];
@@ -182,6 +185,15 @@ vector<string> mergeVector(vector<vector<string>> &lists, ESortType _sortType) {
 }
 
 vector<string> mergeTwoVector(vector<string> &o1, vector<string> &o2, IStringComparer *stringComparer) {
+    if (o1.empty()) {
+        return o2;
+    }
+    if (o2.empty()) {
+        return o1;
+    }
+    if (stringComparer == nullptr) {
+        throw runtime_error("comparer cannot be nullptr");
+    }
     vector<string> o3;
     unsigned int i = 0, j = 0;
     while (i < o1.size() && j < o2.size()) {
@@ -216,9 +228,9 @@ int main() {
             fileList.push_back(entry.path().string());
         }
     }
-    vector<SortType> types = {*new SortType("SingleAscending", ESortType::AlphabeticalAscending, QuickSort),
-                              *new SortType("SingleDescending", ESortType::AlphabeticalDescending, QuickSort),
-                              *new SortType("LastLetterAscending", ESortType::LastLetterAscending, QuickSort)
+    vector<SortType> types = {*new SortType("Ascending", ESortType::AlphabeticalAscending, QuickSort),
+                              *new SortType("Descending", ESortType::AlphabeticalDescending, QuickSort),
+                              *new SortType("LastLetter", ESortType::LastLetterAscending, QuickSort)
     };
     // Do the stuff
     for (auto item: types) {
@@ -228,7 +240,7 @@ int main() {
 #if MULTITHREADED_ENABLED
     cout << endl;
     for (auto item: types) {
-        DoMultiThreaded(fileList, item.getSortType(), "Multi" + item.getSortName(), item.sort);
+        DoMultiThreaded(fileList, item.getSortType(), item.getSortName(), item.sort);
     }
 #endif
 
@@ -241,7 +253,7 @@ int main() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // The Stuff
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void DoSingleThreaded(const vector<string> &_fileList, ESortType _sortType, string _outputName,
+void DoSingleThreaded(const vector<string> &_fileList, ESortType _sortType, const string &_outputName,
                       vector<string> (*sort)(vector<string>, ESortType)) {
     clock_t startTime = clock();
     vector<string> masterStringList;
@@ -254,10 +266,10 @@ void DoSingleThreaded(const vector<string> &_fileList, ESortType _sortType, stri
     }
     clock_t endTime = clock();
 
-    WriteAndPrintResults(masterStringList, _outputName, endTime - startTime);
+    WriteAndPrintResults(masterStringList, "Single" + _outputName, endTime - startTime);
 }
 
-void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, string _outputName,
+void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, const string &_outputName,
                      vector<string> (*sort)(vector<string>, ESortType)) {
 
     clock_t startTime = clock();
@@ -293,7 +305,7 @@ void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, strin
     vector<string> outList = mergeVector(masterStringList, _sortType);
     clock_t endTime = clock();
     outList = QuickSort(outList, _sortType);
-    WriteAndPrintResults(outList, _outputName, endTime - startTime);
+    WriteAndPrintResults(outList, "Multi" + _outputName, endTime - startTime);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -357,20 +369,20 @@ bool AlphabeticalDescendingStringComparer::IsFirstAboveSecond(string _first, str
 }
 
 bool LastLetterAscendingStringComparer::IsFirstAboveSecond(string _first, string _second) {
-    int i = _first.length() - 1;
-    int j = _second.length() - 1;
-    while (i >= 0 && j >= 0) {
+    unsigned long i = _first.length();
+    unsigned long j = _second.length();
+    while (true) {
+        --i;
+        --j;
         if (_first[i] < _second[j])
             return true;
         else if (_first[i] > _second[j])
             return false;
-        --i;
-        --j;
+        if (i == 0 || j == 0) {
+            break;
+        }
     }
 
-    if (i == -1 && j == -1) {
-        return false;
-    }
     return j - i;
 }
 
@@ -383,8 +395,12 @@ vector<string> QuickSort(vector<string> _listToSort, ESortType _sortType) {
     } else if (_sortType == ESortType::LastLetterAscending) {
         stringSorter = new LastLetterAscendingStringComparer();
     }
+    if (stringSorter == nullptr) {
+        throw runtime_error("Sort Type must be one of the following types" + AllSortTypesString);
+    }
     vector<string> &sortedList = _listToSort;
-    QuickSort(sortedList, 0, _listToSort.size() - 1, stringSorter);
+    unsigned long n = _listToSort.size() - 1;
+    QuickSort(sortedList, 0, n, stringSorter);
     return sortedList;
 }
 
@@ -439,7 +455,7 @@ vector<string> BubbleSort(vector<string> _listToSort, ESortType _sortType) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Output
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void WriteAndPrintResults(const vector<string> &_masterStringList, string _outputName, int _clocksTaken) {
+void WriteAndPrintResults(const vector<string> &_masterStringList, const string &_outputName, int _clocksTaken) {
     cout << _outputName << "\t- Clocks Taken: " << _clocksTaken << endl;
     std::__fs::filesystem::path cwd = std::__fs::filesystem::current_path() / "MyOutputFiles";
     std::__fs::filesystem::create_directory(cwd);
