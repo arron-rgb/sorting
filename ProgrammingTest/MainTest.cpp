@@ -61,6 +61,7 @@ namespace fs = std::experimental::filesystem;
 #   else
 
 #       include <filesystem>
+#include <sys/stat.h>
 
 #		if __APPLE__
 namespace fs = std::__fs::filesystem;
@@ -126,7 +127,9 @@ public:
 };
 
 static inline std::string &ltrim(std::string &s) {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int c) { return !std::isspace(c); }));
+    if (!s.empty() && s[s.size() - 1] == '\r')
+        s.erase(s.size() - 1);
+//    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](char c) { return c != '\r'; }));
     return s;
 }
 
@@ -438,8 +441,9 @@ vector<string> BubbleSort(vector<string> _listToSort, ESortType _sortType) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void WriteAndPrintResults(const vector<string> &_masterStringList, string _outputName, int _clocksTaken) {
     cout << _outputName << "\t- Clocks Taken: " << _clocksTaken << endl;
-
-    ofstream fileOut(_outputName + ".txt", ofstream::trunc);
+    std::__fs::filesystem::path cwd = std::__fs::filesystem::current_path() / "MyOutputFiles";
+    std::__fs::filesystem::create_directory(cwd);
+    ofstream fileOut(cwd.string() + "/" + _outputName + ".txt", ofstream::trunc);
     for (const auto &i: _masterStringList) {
         fileOut << i << endl;
     }
