@@ -159,63 +159,6 @@ vector<string> mergeTwoVector(vector<string> &o1, vector<string> &o2, IStringCom
 
 vector<string> mergeVector(vector<vector<string>> &lists, ESortType _sortType);
 
-vector<string> mergeVector(vector<vector<string>> &lists, ESortType _sortType) {
-    if (lists.empty()) {
-        return {};
-    }
-    IStringComparer *stringSorter;
-    if (_sortType == ESortType::AlphabeticalAscending) {
-        stringSorter = new AlphabeticalAscendingStringComparer();
-    } else if (_sortType == ESortType::AlphabeticalDescending) {
-        stringSorter = new AlphabeticalDescendingStringComparer();
-    } else if (_sortType == ESortType::LastLetterAscending) {
-        stringSorter = new LastLetterAscendingStringComparer();
-    } else {
-        throw runtime_error("Sort Type must be one of the following types " + AllSortTypesString);
-    }
-    while (lists.size() > 1) {
-        vector<string> l1 = lists[0];
-        vector<string> l2 = lists[1];
-        auto v = mergeTwoVector(l1, l2, stringSorter);
-        lists.push_back(v);
-        lists.erase(lists.begin());
-        lists.erase(lists.begin());
-    }
-    return lists.front();
-}
-
-vector<string> mergeTwoVector(vector<string> &o1, vector<string> &o2, IStringComparer *stringComparer) {
-    if (o1.empty()) {
-        return o2;
-    }
-    if (o2.empty()) {
-        return o1;
-    }
-    if (stringComparer == nullptr) {
-        throw runtime_error("comparer cannot be nullptr");
-    }
-    vector<string> o3;
-    unsigned int i = 0, j = 0;
-    while (i < o1.size() && j < o2.size()) {
-        if (stringComparer->IsFirstAboveSecond(o1[i], o2[j])) {
-            o3.push_back(o1[i]);
-            i++;
-        } else {
-            o3.push_back(o2[j]);
-            j++;
-        }
-    }
-    while (i < o1.size()) {
-        o3.push_back(o1[i]);
-        i++;
-    }
-    while (j < o2.size()) {
-        o3.push_back(o2[j]);
-        j++;
-    }
-    return o3;
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Main
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -404,7 +347,6 @@ vector<string> QuickSort(vector<string> _listToSort, ESortType _sortType) {
     return sortedList;
 }
 
-
 void QuickSort(vector<string> &_listToSort, int left, int right, IStringComparer *stringComparer) {
     if (left >= right) {
         return;
@@ -426,7 +368,6 @@ void QuickSort(vector<string> &_listToSort, int left, int right, IStringComparer
     QuickSort(_listToSort, left, i - 1, stringComparer);
     QuickSort(_listToSort, i + 1, right, stringComparer);
 }
-
 
 vector<string> BubbleSort(vector<string> _listToSort, ESortType _sortType) {
     IStringComparer *stringSorter;
@@ -450,6 +391,63 @@ vector<string> BubbleSort(vector<string> _listToSort, ESortType _sortType) {
         }
     }
     return sortedList;
+}
+
+vector<string> mergeVector(vector<vector<string>> &lists, ESortType _sortType) {
+    if (lists.empty()) {
+        return {};
+    }
+    IStringComparer *stringSorter;
+    if (_sortType == ESortType::AlphabeticalAscending) {
+        stringSorter = new AlphabeticalAscendingStringComparer();
+    } else if (_sortType == ESortType::AlphabeticalDescending) {
+        stringSorter = new AlphabeticalDescendingStringComparer();
+    } else if (_sortType == ESortType::LastLetterAscending) {
+        stringSorter = new LastLetterAscendingStringComparer();
+    } else {
+        throw runtime_error("Sort Type must be one of the following types " + AllSortTypesString);
+    }
+    while (lists.size() > 1) {
+        vector<string> l1 = lists[0];
+        vector<string> l2 = lists[1];
+        auto v = mergeTwoVector(l1, l2, stringSorter);
+        lists.push_back(v);
+        lists.erase(lists.begin());
+        lists.erase(lists.begin());
+    }
+    return lists.front();
+}
+
+vector<string> mergeTwoVector(vector<string> &o1, vector<string> &o2, IStringComparer *stringComparer) {
+    if (o1.empty()) {
+        return o2;
+    }
+    if (o2.empty()) {
+        return o1;
+    }
+    if (stringComparer == nullptr) {
+        throw runtime_error("comparer cannot be nullptr");
+    }
+    vector<string> o3;
+    unsigned int i = 0, j = 0;
+    while (i < o1.size() && j < o2.size()) {
+        if (stringComparer->IsFirstAboveSecond(o1[i], o2[j])) {
+            o3.push_back(o1[i]);
+            i++;
+        } else {
+            o3.push_back(o2[j]);
+            j++;
+        }
+    }
+    while (i < o1.size()) {
+        o3.push_back(o1[i]);
+        i++;
+    }
+    while (j < o2.size()) {
+        o3.push_back(o2[j]);
+        j++;
+    }
+    return o3;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
