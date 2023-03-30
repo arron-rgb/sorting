@@ -27,6 +27,7 @@
 #include <ctime>
 #include <utility>
 #include <vector>
+#include <unistd.h>
 
 #ifndef INCLUDE_STD_FILESYSTEM_EXPERIMENTAL
 #   if defined(__cpp_lib_filesystem)
@@ -74,7 +75,7 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Definitions and Declarations
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#define MULTITHREADED_ENABLED 0
+#define MULTITHREADED_ENABLED 1
 
 enum class ESortType {
     AlphabeticalAscending, AlphabeticalDescending, LastLetterAscending
@@ -132,11 +133,15 @@ static inline std::string &ltrim(std::string &s) {
 void DoSingleThreaded(const vector<string> &_fileList, ESortType _sortType, string _outputName,
                       vector<string> (*sort)(vector<string>, ESortType));
 
-void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, string _outputName);
+void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, string _outputName,
+                     vector<string> (*sort)(vector<string>, ESortType));
 
 vector<string> ReadFile(const string &_fileName);
 
 void ThreadedReadFile(const string &_fileName, vector<string> *_listOut);
+
+vector<string>
+ThreadedSortFile(ESortType _sortType, vector<string> *_listToSort, vector<string> (*sort)(vector<string>, ESortType));
 
 vector<string> BubbleSort(vector<string> _listToSort, ESortType _sortType);
 
@@ -145,6 +150,56 @@ void QuickSort(vector<string> &_listToSort, int left, int right, IStringComparer
 vector<string> QuickSort(vector<string> _listToSort, ESortType _sortType);
 
 void WriteAndPrintResults(const vector<string> &_masterStringList, string _outputName, int _clocksTaken);
+
+vector<string> mergeTwoVector(vector<string> &o1, vector<string> &o2, IStringComparer *stringComparer);
+
+vector<string> mergeVector(vector<vector<string>> &lists, ESortType _sortType);
+
+vector<string> mergeVector(vector<vector<string>> &lists, ESortType _sortType) {
+    if (lists.empty()) {
+        return {};
+    }
+    IStringComparer *stringSorter = nullptr;
+    if (_sortType == ESortType::AlphabeticalAscending) {
+        stringSorter = new AlphabeticalAscendingStringComparer();
+    } else if (_sortType == ESortType::AlphabeticalDescending) {
+        stringSorter = new AlphabeticalDescendingStringComparer();
+    } else if (_sortType == ESortType::LastLetterAscending) {
+        stringSorter = new LastLetterAscendingStringComparer();
+    }
+    while (lists.size() > 1) {
+        vector<string> l1 = lists[0];
+        vector<string> l2 = lists[1];
+        auto v = mergeTwoVector(l1, l2, stringSorter);
+        lists.push_back(v);
+        lists.erase(lists.begin());
+        lists.erase(lists.begin());
+    }
+    return lists.front();
+}
+
+vector<string> mergeTwoVector(vector<string> &o1, vector<string> &o2, IStringComparer *stringComparer) {
+    vector<string> o3;
+    unsigned int i = 0, j = 0;
+    while (i < o1.size() && j < o2.size()) {
+        if (stringComparer->IsFirstAboveSecond(o1[i], o2[j])) {
+            o3.push_back(o1[i]);
+            i++;
+        } else {
+            o3.push_back(o2[j]);
+            j++;
+        }
+    }
+    while (i < o1.size()) {
+        o3.push_back(o1[i]);
+        i++;
+    }
+    while (j < o2.size()) {
+        o3.push_back(o2[j]);
+        j++;
+    }
+    return o3;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Main
@@ -160,16 +215,18 @@ int main() {
     }
     vector<SortType> types = {*new SortType("SingleAscending", ESortType::AlphabeticalAscending, QuickSort),
                               *new SortType("SingleDescending", ESortType::AlphabeticalDescending, QuickSort),
-                              *new SortType("LastLetterAscending", ESortType::LastLetterAscending, QuickSort)};
+                              *new SortType("LastLetterAscending", ESortType::LastLetterAscending, QuickSort)
+    };
     // Do the stuff
     for (auto item: types) {
         DoSingleThreaded(fileList, item.getSortType(), item.getSortName(), item.sort);
     }
 
 #if MULTITHREADED_ENABLED
-    DoMultiThreaded(fileList, ESortType::AlphabeticalAscending, "MultiAscending");
-    DoMultiThreaded(fileList, ESortType::AlphabeticalDescending,	"MultiDescending");
-    DoMultiThreaded(fileList, ESortType::LastLetterAscending,		"MultiLastLetter");
+    cout << endl;
+    for (auto item: types) {
+        DoMultiThreaded(fileList, item.getSortType(), "Multi" + item.getSortName(), item.sort);
+    }
 #endif
 
     // Wait
@@ -197,20 +254,43 @@ void DoSingleThreaded(const vector<string> &_fileList, ESortType _sortType, stri
     WriteAndPrintResults(masterStringList, _outputName, endTime - startTime);
 }
 
-void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, string _outputName) {
+void DoMultiThreaded(const vector<string> &_fileList, ESortType _sortType, string _outputName,
+                     vector<string> (*sort)(vector<string>, ESortType)) {
+
     clock_t startTime = clock();
-    vector<string> masterStringList(_fileList.size());
+    vector<vector<string>> masterStringList(_fileList.size());
     vector<thread> workerThreads(_fileList.size());
-    for (unsigned int i = 0; i < _fileList.size() - 1; ++i) {
-//        workerThreads[i] = thread(ThreadedReadFile, _fileList[i], masterStringList);
-//        workerThreads[i].join();
-//        ThreadedReadFile(_fileList[i], masterStringList);
+    for (unsigned int i = 0; i < _fileList.size(); ++i) {
+        workerThreads[i] = thread(ThreadedReadFile, _fileList[i], &masterStringList[i]);
+    }
+    for (auto &item: workerThreads) {
+        try {
+            if (item.joinable()) {
+                item.join();
+            }
+        } catch (...) {
+            cout << "error" << &item << endl;
+        }
     }
 
-    masterStringList = BubbleSort(masterStringList, _sortType);
+    for (unsigned int i = 0; i < _fileList.size(); ++i) {
+        workerThreads[i] = thread(ThreadedSortFile, _sortType, &masterStringList[i], sort);
+    }
+    for (auto &item: workerThreads) {
+        try {
+            if (item.joinable()) {
+                item.join();
+            }
+        } catch (...) {
+            cout << "error" << &item << endl;
+        }
+    }
+
+
+    vector<string> outList = mergeVector(masterStringList, _sortType);
     clock_t endTime = clock();
-    masterStringList = BubbleSort(masterStringList, _sortType);
-    WriteAndPrintResults(masterStringList, _outputName, endTime - startTime);
+    outList = QuickSort(outList, _sortType);
+    WriteAndPrintResults(outList, _outputName, endTime - startTime);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -239,6 +319,11 @@ vector<string> ReadFile(const string &_fileName) {
 
 void ThreadedReadFile(const string &_fileName, vector<string> *_listOut) {
     *_listOut = ReadFile(_fileName);
+}
+
+vector<string>
+ThreadedSortFile(ESortType _sortType, vector<string> *_listToSort, vector<string> (*sort)(vector<string>, ESortType)) {
+    return sort(*_listToSort, _sortType);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -352,7 +437,7 @@ vector<string> BubbleSort(vector<string> _listToSort, ESortType _sortType) {
 // Output
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void WriteAndPrintResults(const vector<string> &_masterStringList, string _outputName, int _clocksTaken) {
-    cout << endl << _outputName << "\t- Clocks Taken: " << _clocksTaken << endl;
+    cout << _outputName << "\t- Clocks Taken: " << _clocksTaken << endl;
 
     ofstream fileOut(_outputName + ".txt", ofstream::trunc);
     for (const auto &i: _masterStringList) {
