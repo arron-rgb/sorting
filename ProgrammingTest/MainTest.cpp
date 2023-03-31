@@ -174,9 +174,9 @@ int main() {
             fileList.push_back(entry.path().string());
         }
     }
-    vector<SortType> types = {*new SortType("Ascending", ESortType::AlphabeticalAscending, QuickSort),
-                              *new SortType("Descending", ESortType::AlphabeticalDescending, QuickSort),
-                              *new SortType("LastLetter", ESortType::LastLetterAscending, QuickSort)
+    vector<SortType> types = {*new SortType("Ascending", ESortType::AlphabeticalAscending, BubbleSort),
+                              *new SortType("Descending", ESortType::AlphabeticalDescending, BubbleSort),
+                              *new SortType("LastLetter", ESortType::LastLetterAscending, BubbleSort)
     };
     // Do the stuff
     for (auto item: types) {
