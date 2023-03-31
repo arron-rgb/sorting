@@ -76,7 +76,6 @@ using namespace std;
 // Definitions and Declarations
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #define MULTITHREADED_ENABLED 1
-
 enum class ESortType {
     AlphabeticalAscending, AlphabeticalDescending, LastLetterAscending
 };
@@ -105,6 +104,11 @@ public:
         return this->_sortType;
     }
 
+    ~SortType() = default;
+
+    void Destroy(void) {
+
+    }
 };
 
 class IStringComparer {
@@ -130,7 +134,6 @@ public:
 static inline std::string &ltrim(std::string &s) {
     if (!s.empty() && s[s.size() - 1] == '\r')
         s.erase(s.size() - 1);
-//    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](char c) { return c != '\r'; }));
     return s;
 }
 
@@ -190,6 +193,9 @@ int main() {
     // Wait
     cout << endl << "Finished..." << endl;
 //	getchar();
+    while (!types.empty()) {
+        types.erase(types.begin());
+    }
     return 0;
 }
 
@@ -345,6 +351,7 @@ vector<string> QuickSort(vector<string> _listToSort, ESortType _sortType) {
     vector<string> &sortedList = _listToSort;
     unsigned long n = _listToSort.size() - 1;
     QuickSort(sortedList, 0, n, stringSorter);
+    std::free(stringSorter);
     return sortedList;
 }
 
